@@ -1,32 +1,34 @@
+
 FROM sendingtk/chatwoot:v3.13.8
 
-# Atualiza os pacotes e instala Node.js e Yarn
+# Instala dependências do sistema
 RUN apk update && apk add --no-cache \
-    nodejs \
-    npm \
-    yarn
+    nodejs-current \
+    yarn \
+    build-base \
+    git \
+    postgresql-dev \
+    libxml2-dev \
+    libxslt-dev \
+    file \
+    imagemagick
 
 # Define o diretório de trabalho
 WORKDIR /app
 
 # Define o ambiente como produção
 ENV RAILS_ENV=production
+ENV SECRET_KEY_BASE=precompile_placeholder
 
-# Copia o arquivo customizado do Tailwind
-COPY ./tailwind.config.js /app/tailwind.config.js
-
-# Copia os arquivos de branding para o diretório público
-COPY branding/* /app/public/
-
-# Copia o componente Vue.js personalizado
-COPY ./app/javascript/dashboard/components/ChatList.vue /app/app/javascript/dashboard/components/ChatList.vue
-
-# Garante que todas as dependências estejam instaladas corretamente
-RUN yarn install --check-files
+# Instala dependências Ruby e Yarn
 RUN bundle install --without development test
+RUN yarn install --check-files
 
-# Limpa os assets do Rails
-RUN SECRET_KEY_BASE=precompile_placeholder RAILS_ENV=production bundle exec rake assets:clean
+# Copia os arquivos customizados
+COPY ./tailwind.config.js /app/tailwind.config.js
+COPY branding/*.* /app/public/
+COPY app/javascript/dashboard/components/ChatList.vue /app/app/javascript/dashboard/components/ChatList.vue
 
-# Recompila os assets do Rails
-RUN SECRET_KEY_BASE=precompile_placeholder RAILS_ENV=production bundle exec rake assets:precompile
+# Limpa e recompila os assets do Rails
+RUN bundle exec rake assets:clean
+RUN bundle exec rake assets:precompile --trace
